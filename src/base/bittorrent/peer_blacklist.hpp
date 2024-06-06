@@ -14,9 +14,10 @@
 // bad peer filter
 bool is_bad_peer(const lt::peer_info& info)
 {
-  static const std::regex id_filter("-(XL|SD|XF|QD|BN|DL|TS|DT)(\\d+)-");
-  static const std::regex ua_filter(R"((\d+.\d+.\d+.\d+|cacao_torrent))");
-  static const std::regex consume_filter(R"((dt/torrent|Taipei-torrent))");
+  std::regex id_filter("-(XL|SD|XF|QD|BN|DL|TS|DT|GT|HP)(\\d+)-|A2-1-34-");
+  std::regex ua_filter(R"((\d+.\d+.\d+.\d+|cacao_torrent|^(?=.*offline).*$|MediaGet|netdisk))");
+  std::regex consume_filter(R"((dt/torrent|Taipei-torrent|aria2/1.34.0|ljyun.cn))");
+  // 一堆aria2/1.34.0和以前记录的离线下载一个ip段，netdisk不知道是什么东西 屏蔽，MediaGet看着也不像什么正经客户端
 
   // TODO: trafficConsume by thank243(senis) but it's hard to determine GT0003 is legitimate client or not...
   // Anyway, block dt/torrent and Taipei-torrent with specific case first.
@@ -38,7 +39,7 @@ bool is_unknown_peer(const lt::peer_info& info)
 // Offline Downloader filter
 bool is_offline_downloader(const lt::peer_info& info)
 {
-  static const std::regex id_filter("-LT(1220|2070)-");
+  std::regex id_filter("-LT(1220|2070)-");
   unsigned short port = info.ip.port();
   QString country = Net::GeoIPManager::instance()->lookup(QHostAddress(info.ip.data()));
   // 115: Old data, may out of date.
@@ -52,13 +53,17 @@ bool is_offline_downloader(const lt::peer_info& info)
 // BitTorrent Media Player Peer filter
 bool is_bittorrent_media_player(const lt::peer_info& info)
 {
-  if (info.client.find("StellarPlayer") != std::string::npos || info.client.find("Elementum") != std::string::npos) {
-    return true;
-  }
-  static const std::regex player_filter("-(UW\\w{4}|SP(([0-2]\\d{3})|(3[0-5]\\d{2})))-");
-  return !!std::regex_match(info.pid.data(), info.pid.data() + 8, player_filter);
-}
+    // 检查客户端字符串中是否包含 "StellarPlayer"、"Elementum" 或 "BitSpirit"
+    if (info.client.find("StellarPlayer") != std::string::npos || 
+        info.client.find("Elementum") != std::string::npos || 
+        info.client.find("BitSpirit") != std::string::npos) {
+        return true;
+    }
+    
+    std::regex player_filter("-(UW\\w{4}|SP(([0-2]\\d{3})|(3[0-5]\\d{2})))-");
 
+    return !!std::regex_match(info.pid.data(), info.pid.data() + 8, player_filter);
+}
 
 // drop connection action
 void drop_connection(lt::peer_connection_handle ph)
